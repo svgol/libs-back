@@ -158,6 +158,38 @@ mimeTypeForPasteboardType(Display *xDisplay, NSZone *zone, NSArray *types)
   return typelist;
 }
 
+// FIXME: code duplication... a copy from xpbs.m
+static inline
+NSArray *
+pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
+{
+  Atom            *type = typelist;
+  NSMutableArray  *newTypes = [[NSMutableArray allocWithZone: zone] init];
+  NSString        *mime;
+  NSString        *ptype;
+  int              i;
+
+  for (i = 0; type[i] != 0; i++)
+    {
+      char *s = XGetAtomName(xDisplay, *type);
+
+      if (s)
+	{
+	  mime = [[NSString alloc] initWithCString: s encoding: NSASCIIStringEncoding];
+	  ptype = [NSPasteboard pasteboardTypeForMimeType: mime];
+	  //if (ptype && ptype != mime)
+	    {
+	      // only supported ones are added
+	      [newTypes addObject: ptype];
+	    }
+	  XFree(s);
+	  RELEASE(mime);
+	}
+    }
+
+  return AUTORELEASE(newTypes);
+}
+
 
 
 @implementation XGDragView
@@ -180,6 +212,27 @@ static	XGDragView	*sharedDragView = nil;
 }
 
 /*
+ * Produces the pasteboard types available for DnD
+ * from the source/dragger window.
+ */
+- (NSArray*) _availableTypes: (XEvent *)xEvent
+{
+  Window window;
+  Atom *types;
+  NSArray *newTypes;
+
+  window = XDND_ENTER_SOURCE_WIN(xEvent);
+  if (window == None)
+    return nil;
+
+  dnd.dragger_window = window;
+  xdnd_get_type_list(&dnd, window, &types);
+  newTypes = pasteboardTypeForMimeType(XDPY, [self zone], types);
+  free(types);
+  return newTypes;
+}
+
+/*
  * External drag operation
  */
 - (void) setupDragInfoFromXEvent: (XEvent *)xEvent
@@ -190,6 +243,11 @@ static	XGDragView	*sharedDragView = nil;
   operationMask = NSDragOperationAll;
 
   ASSIGN(dragPasteboard, [NSPasteboard pasteboardWithName: NSDragPboard]);
+
+  [dragPasteboard declareTypes: [self _availableTypes: xEvent]
+			 owner: self];
+  NSArray *types = [dragPasteboard types];
+  NSLog(@"%@", types);
 }
 
 - (void) updateDragInfoFromEvent: (NSEvent*)event
