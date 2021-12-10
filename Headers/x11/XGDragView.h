@@ -54,10 +54,11 @@ NSDragOperation	GSDragOperationForAction(Atom xaction);
 @interface	XGDragView : GSDragView
 {
   Atom           *typelist;
+  int          changeCount;
 }
 
 + (id) sharedDragView;
-
+- (id) init;
 - (void) setupDragInfoFromXEvent: (XEvent *)xEvent;
 - (void) updateDragInfoFromEvent: (NSEvent *)event;
 - (void) resetDragInfo;

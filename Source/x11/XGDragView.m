@@ -211,6 +211,17 @@ static	XGDragView	*sharedDragView = nil;
   return [XGRawWindow class];
 }
 
+- (id) init
+{
+  self = [super init];
+  if (self != nil)
+    {
+      changeCount = -1;
+    }
+
+  return self;
+}
+
 /*
  * Produces the pasteboard types available for DnD
  * from the source/dragger window.
@@ -244,8 +255,8 @@ static	XGDragView	*sharedDragView = nil;
 
   ASSIGN(dragPasteboard, [NSPasteboard pasteboardWithName: NSDragPboard]);
 
-  [dragPasteboard declareTypes: [self _availableTypes: xEvent]
-			 owner: self];
+  changeCount = [dragPasteboard declareTypes: [self _availableTypes: xEvent]
+				       owner: self];
   NSArray *types = [dragPasteboard types];
   NSLog(@"%@", types);
 }
@@ -261,6 +272,7 @@ static	XGDragView	*sharedDragView = nil;
 
 - (void) resetDragInfo
 {
+  changeCount = -1;
   DESTROY(dragPasteboard);
 }
 
