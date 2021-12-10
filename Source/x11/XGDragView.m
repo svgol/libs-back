@@ -171,7 +171,7 @@ pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
 
   for (i = 0; type[i] != 0; i++)
     {
-      char *s = XGetAtomName(xDisplay, *type);
+      char *s = XGetAtomName(xDisplay, type[i]);
 
       if (s)
 	{
