@@ -177,7 +177,8 @@ pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
 	{
 	  mime = [[NSString alloc] initWithCString: s encoding: NSASCIIStringEncoding];
 	  ptype = [NSPasteboard pasteboardTypeForMimeType: mime];
-	  //if (ptype && ptype != mime)
+	  NSLog(@"NSDragging: xtype: %@ -> ptype: %@", mime, ptype);
+	  if (ptype && ptype != mime)
 	    {
 	      // only supported ones are added
 	      [newTypes addObject: ptype];
@@ -272,8 +273,56 @@ static	XGDragView	*sharedDragView = nil;
 
 - (void) resetDragInfo
 {
+  dnd.stage = XDND_DROP_STAGE_IDLE;
+  dnd.dragger_window = None;
   changeCount = -1;
   DESTROY(dragPasteboard);
+}
+
+- (void)pasteboard:(NSPasteboard *)pb provideDataForType:(NSString *)type
+{
+  NSDate                *timeoutDate;
+  Atom                  *tlist;
+  gswindow_device_t     *window;
+
+  if (destWindow != nil && changeCount == [pb changeCount])
+    {
+      window = DRAGWINDEV;
+      dnd.dropper_window = window->ident;
+
+      tlist = mimeTypeForPasteboardType (XDPY, [self zone], [NSArray arrayWithObject: type]);
+      xdnd_convert_selection(&dnd,
+			     dnd.dragger_window, // owner
+			     dnd.dropper_window, // requestor
+			     tlist[0]);       // type
+      NSZoneFree([self zone], tlist);
+      tlist = NULL;
+
+      dnd.stage = XDND_DROP_STAGE_CONVERTING;
+      NSLog(@"XDND_DROP_STAGE_CONVERTING");
+      // now wait for SelectionNotify
+
+      timeoutDate = [NSDate dateWithTimeIntervalSinceNow: 5.0];
+
+      while (dnd.stage != XDND_DROP_STAGE_ENTERED &&
+	     [timeoutDate timeIntervalSinceNow] > 0.0)
+	{
+	  [[NSRunLoop currentRunLoop]
+		       runMode: NSDefaultRunLoopMode
+		    beforeDate: timeoutDate];
+	}
+
+      if (dnd.stage == XDND_DROP_STAGE_ENTERED)
+	{
+	  //[];
+	  NSLog(@"XDND_DROP_STAGE_ENTERED");
+	}
+      else
+	{
+	  NSLog(@"DnD is canceled by timeout");
+	  [self resetDragInfo];
+	}
+    }
 }
 
 /*

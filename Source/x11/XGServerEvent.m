@@ -1854,6 +1854,23 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
       case SelectionNotify:
         NSDebugLLog(@"NSEvent", @"%lu SelectionNotify\n",
                     xEvent.xselection.requestor);
+	XGDragView *dragInfo = [XGDragView sharedDragView];
+	NSWindow *destWindow = [dragInfo draggingDestinationWindow];
+	if (destWindow != nil)
+	  {
+	    DndClass dnd = xdnd();
+	    if (xEvent.xselection.requestor == dnd.dropper_window)
+	      {
+		if (xEvent.xselection.property == None)
+		  {
+		    break;
+		  }
+		NSLog(@"NSDragging: %lu SelectionNotify\n",
+			    dnd.dragger_window);
+		// trigger dropping
+		dnd.stage = XDND_DROP_STAGE_ENTERED;
+	      }
+	  }
         break;
 
       case SelectionRequest:

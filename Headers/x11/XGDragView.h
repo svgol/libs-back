@@ -62,6 +62,7 @@ NSDragOperation	GSDragOperationForAction(Atom xaction);
 - (void) setupDragInfoFromXEvent: (XEvent *)xEvent;
 - (void) updateDragInfoFromEvent: (NSEvent *)event;
 - (void) resetDragInfo;
+- (void)pasteboard:(NSPasteboard *)pb provideDataForType:(NSString *)type;
 - (void) dragImage: (NSImage*)anImage
 		at: (NSPoint)screenLocation
 	    offset: (NSSize)initialOffset
