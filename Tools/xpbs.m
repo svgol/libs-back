@@ -1605,7 +1605,7 @@ pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
 
   while (*type != None) // <- here is a bug... an endless loop
     {
-      char *s = XGetAtomName(xDisplay, *type);
+      char *s = XGetAtomName(xDisplay, *type); // <- bug
       
       if (s)
 	{
