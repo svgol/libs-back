@@ -1603,7 +1603,7 @@ pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
   Atom *type = typelist;
   NSMutableArray *newTypes = [[NSMutableArray allocWithZone: zone] init];
 
-  while (*type != None)
+  while (*type != None) // <- here is a bug... an endless loop
     {
       char *s = XGetAtomName(xDisplay, *type);
       
@@ -1613,6 +1613,7 @@ pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
 	    [NSString stringWithCString: s]]];
 	  XFree(s);
 	}
+      // bug: no modification of 'type'
     }
   
   return AUTORELEASE(newTypes);
