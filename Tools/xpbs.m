@@ -610,7 +610,7 @@ static int              xFixesEventBase;
 
 - (void) pasteboardChangedOwner: (NSPasteboard*)sender
 {
-  Window	w;
+  //Window	w;
   /*
    *	If this gets called, a GNUstep object has grabbed the pasteboard
    *	or has changed the types of data available from the pasteboard
@@ -625,6 +625,11 @@ static int              xFixesEventBase;
   // types available on the pasteboard in case a GNUstep app wants to read from
   // the pasteboard.)
 
+  /*
+   * it is probably a bug to acquire selection ownership bc between
+   * GNUstep applications is there the gpbs in charge while between an X-App and
+   * a GNUstep app is there the ICCCM machinery (XDND) overcoming the gpbs
+
   _timeOfSetSelectionOwner = [self xTimeByAppending];
   XSetSelectionOwner(xDisplay, _xPb, xAppWin, _timeOfSetSelectionOwner);
 
@@ -637,6 +642,7 @@ static int              xFixesEventBase;
     {
       [self setOwnedByOpenStep: YES];
     }
+  */
 }
 
 - (void) requestData: (Atom)xType 
