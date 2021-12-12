@@ -114,6 +114,8 @@ struct _DndClass {
 
 /* block for only this many seconds on not receiving a XdndFinished from target, default : 10 */
     int time_out;
+  /* the property to acquire the data from the owner */
+  Atom property;
 };
 
 void xdnd_init (DndClass * dnd, Display * display);

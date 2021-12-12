@@ -62,6 +62,9 @@ NSDragOperation	GSDragOperationForAction(Atom xaction);
 - (void) setupDragInfoFromXEvent: (XEvent *)xEvent;
 - (void) updateDragInfoFromEvent: (NSEvent *)event;
 - (void) resetDragInfo;
+/* switch the state into XDND_DROP_STAGE_ENTERED */
+- (void)enterDropStage:(XEvent *)xEvent;
+- (NSMutableData*) getSelectionDataOfType: (Atom*)type;
 - (void)pasteboard:(NSPasteboard *)pb provideDataForType:(NSString *)type;
 - (void) dragImage: (NSImage*)anImage
 		at: (NSPoint)screenLocation

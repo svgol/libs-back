@@ -56,6 +56,93 @@
 #define	XX(P)	(P.x)
 #define	XY(P)	([(XGServer *)GSCurrentServer() xScreenSize].height - P.y)
 
+/*
+ *	Non-predefined atoms that are used in the X selection mechanism
+ */
+static char *atom_names_xg[] = {
+  "CHARACTER_POSITION",
+  "CLIENT_WINDOW",
+  "HOST_NAME",
+  "HOSTNAME",
+  "LENGTH",
+  "LIST_LENGTH",
+  "NAME",
+  "OWNER_OS",
+  "SPAN",
+  "TARGETS",
+  "TIMESTAMP",
+  "USER",
+  "TEXT",
+  "NULL",
+  "FILE_NAME",
+  "CLIPBOARD",
+  "UTF8_STRING",
+  "MULTIPLE",
+  "COMPOUND_TEXT",
+  "INCR",
+
+  // some MIME types
+  "text/plain",
+  "text/uri-list",
+  "application/postscript",
+  "text/tab-separated-values",
+  "text/richtext",
+  "image/tiff",
+  "application/octet-stream",
+  "application/x-rootwindow-drop",
+  "application/richtext",
+  "text/rtf",
+  "text/html",
+  "application/xhtml+xml",
+  "image/png",
+  "image/svg",
+  "application/rtf",
+  "text/richtext"
+};
+static Atom atoms[sizeof(atom_names_xg)/sizeof(char*)];
+
+
+/*
+ * Macros to access elements in atom_names array.
+ */
+#define XG_CHAR_POSITION        atoms[0]
+#define XG_CLIENT_WINDOW        atoms[1]
+#define XG_HOST_NAME            atoms[2]
+#define XG_HOSTNAME             atoms[3]
+#define XG_LENGTH               atoms[4]
+#define XG_LIST_LENGTH          atoms[5]
+#define XG_NAME                 atoms[6]
+#define XG_OWNER_OS             atoms[7]
+#define XG_SPAN                 atoms[8]
+#define XG_TARGETS              atoms[9]
+#define XG_TIMESTAMP            atoms[10]
+#define XG_USER                 atoms[11]
+#define XG_TEXT                 atoms[12]
+#define XG_NULL                 atoms[13]
+#define XG_FILE_NAME		atoms[14]
+#define XA_CLIPBOARD		atoms[15]
+#define XG_UTF8_STRING		atoms[16]
+#define XG_MULTIPLE		atoms[17]
+#define XG_COMPOUND_TEXT	atoms[18]
+#define XG_INCR         	atoms[19]
+#define XG_MIME_PLAIN    	atoms[20]
+#define XG_MIME_URI      	atoms[21]
+#define XG_MIME_PS      	atoms[22]
+#define XG_MIME_TSV      	atoms[23]
+#define XG_MIME_RICHTEXT  atoms[24]
+#define XG_MIME_TIFF      atoms[25]
+#define XG_MIME_OCTET     atoms[26]
+#define XG_MIME_ROOTWINDOW atoms[27]
+#define XG_MIME_APP_RICHTEXT atoms[28]
+#define XG_MIME_RTF       atoms[29]
+#define XG_MIME_HTML      atoms[30]
+#define XG_MIME_XHTML     atoms[31]
+#define XG_MIME_PNG       atoms[32]
+#define XG_MIME_SVG       atoms[33]
+#define XG_MIME_APP_RTF   atoms[34]
+#define XG_MIME_TEXT_RICHTEXT atoms[35]
+
+
 @interface XGRawWindow : NSWindow
 @end
 
@@ -81,6 +168,21 @@ GSEnsureDndIsInitialized (void)
     {
       xDndInitialized = YES;
       xdnd_init (&dnd, XDPY);
+        /*
+	 * Set up atoms for use in X selection mechanism.
+	 */
+#ifdef HAVE_XINTERNATOMS
+   XInternAtoms(dnd.display, atom_names_xg, sizeof(atom_names_xg)/sizeof(char*),
+                False, atoms);
+#else
+   {
+     int atomCount;
+
+     for (atomCount = 0; atomCount < sizeof(atom_names_xg)/sizeof(char*); atomCount++)
+       atoms[atomCount] = XInternAtom(dnd.display, atom_names_xg[atomCount], False);
+   }
+#endif
+
     }
 }
 
@@ -124,11 +226,11 @@ GSDragOperationForAction(Atom xaction)
     action = NSDragOperationCopy;
   else if (xaction == dnd.XdndActionMove)
     action = NSDragOperationMove;
-  else if (xaction == dnd.XdndActionLink) 
+  else if (xaction == dnd.XdndActionLink)
     action = NSDragOperationLink;
-  else if (xaction == dnd.XdndActionAsk) 
+  else if (xaction == dnd.XdndActionAsk)
     action = NSDragOperationEvery;
-  else if (xaction == dnd.XdndActionPrivate) 
+  else if (xaction == dnd.XdndActionPrivate)
     action = NSDragOperationPrivate;
   else
     action = NSDragOperationNone;
@@ -167,17 +269,14 @@ pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
   NSMutableArray  *newTypes = [[NSMutableArray allocWithZone: zone] init];
   NSString        *mime;
   NSString        *ptype;
-  int              i;
 
-  for (i = 0; type[i] != 0; i++)
+  while (*type != None)
     {
-      char *s = XGetAtomName(xDisplay, type[i]);
-
+      char *s = XGetAtomName(xDisplay, *type);
       if (s)
 	{
 	  mime = [[NSString alloc] initWithCString: s encoding: NSASCIIStringEncoding];
 	  ptype = [NSPasteboard pasteboardTypeForMimeType: mime];
-	  NSLog(@"NSDragging: xtype: %@ -> ptype: %@", mime, ptype);
 	  if (ptype && ptype != mime)
 	    {
 	      // only supported ones are added
@@ -186,6 +285,7 @@ pasteboardTypeForMimeType(Display *xDisplay, NSZone *zone, Atom *typelist)
 	  XFree(s);
 	  RELEASE(mime);
 	}
+      type++;
     }
 
   return AUTORELEASE(newTypes);
@@ -227,18 +327,15 @@ static	XGDragView	*sharedDragView = nil;
  * Produces the pasteboard types available for DnD
  * from the source/dragger window.
  */
-- (NSArray*) _availableTypes: (XEvent *)xEvent
+- (NSArray*) _availableTypes
 {
-  Window window;
   Atom *types;
   NSArray *newTypes;
 
-  window = XDND_ENTER_SOURCE_WIN(xEvent);
-  if (window == None)
+  if (dnd.dragger_window == None)
     return nil;
 
-  dnd.dragger_window = window;
-  xdnd_get_type_list(&dnd, window, &types);
+  xdnd_get_type_list(&dnd, dnd.dragger_window, &types);
   newTypes = pasteboardTypeForMimeType(XDPY, [self zone], types);
   free(types);
   return newTypes;
@@ -256,18 +353,26 @@ static	XGDragView	*sharedDragView = nil;
 
   ASSIGN(dragPasteboard, [NSPasteboard pasteboardWithName: NSDragPboard]);
 
-  changeCount = [dragPasteboard declareTypes: [self _availableTypes: xEvent]
+  dnd.dragger_window = XGetSelectionOwner(XDPY, dnd.XdndSelection);
+  dnd.dropper_window = ((XAnyEvent *)xEvent)->window;
+
+  changeCount = [dragPasteboard declareTypes: [self _availableTypes]
 				       owner: self];
-  NSArray *types = [dragPasteboard types];
-  NSLog(@"%@", types);
 }
 
 - (void) updateDragInfoFromEvent: (NSEvent*)event
 {
-  // Store the drag info, so that we can send status messages as response 
-  destWindow = [event window];
+  // Store the drag info, so that we can send status messages as response
+  gswindow_device_t	*window = [XGServer _windowWithTag: [event windowNumber]];
+  destWindow = GSWindowWithNumber(window->number);
+
+  //destWindow = [event window]; // <- bug... XGServerEvent calls -[updateDragInfoFromEvent:] on receiving
+                               //           XdndPosition which sent by the source/dragger to the target/destination/dropper.
+                               //           The event's window points to the source/dragger window not the destination.
   dragPoint = [event locationInWindow];
   dragSequence = [event timestamp];
+  dnd.time = ((Time)dragSequence)*1000;
+  NSLog(@"dnd.time %lld", dnd.time);
   dragMask = [event data2];
 }
 
@@ -275,51 +380,275 @@ static	XGDragView	*sharedDragView = nil;
 {
   dnd.stage = XDND_DROP_STAGE_IDLE;
   dnd.dragger_window = None;
+  dnd.dropper_window = None;
+  dnd.time = CurrentTime;
+  dnd.property = None;
   changeCount = -1;
   DESTROY(dragPasteboard);
+}
+
+/* switch the state into XDND_DROP_STAGE_ENTERED */
+- (void)enterDropStage:(XEvent *)xEvent
+{
+  // trigger dropping
+  dnd.stage = XDND_DROP_STAGE_ENTERED;
+  dnd.property = xEvent->xselection.property;
+}
+
+/* FIXME... code duplication... it is a copy from xpbs.m */
+#define FULL_LENGTH 8192L	/* Amount to read */
+- (NSMutableData*) getSelectionDataOfType: (Atom*)type
+{
+  int		status;
+  unsigned char	*data;
+  long long_offset = 0L;
+  long long_length = FULL_LENGTH;
+  Atom req_type = AnyPropertyType;
+  Atom actual_type;
+  int		actual_format;
+  unsigned long	bytes_remaining;
+  unsigned long	number_items;
+  NSMutableData	*md = nil;
+
+  /*
+   * Read data from property identified in SelectionNotify event.
+   */
+  do
+    {
+      status = XGetWindowProperty(dnd.display,
+                                  dnd.dropper_window,
+                                  dnd.property,
+                                  long_offset,         // offset
+                                  long_length,
+                                  False,               // Aug 2011 - changed to False (don't delete property)
+                                  req_type,
+                                  &actual_type,
+                                  &actual_format,
+                                  &number_items,
+                                  &bytes_remaining,
+                                  &data);
+
+      if ((status == Success) && (number_items > 0))
+        {
+          long count;
+	  if (actual_type == XA_ATOM)
+	    {
+	      // xlib will report an actual_format of 32, even if
+	      // data contains an array of 64-bit Atoms
+	      count = number_items * sizeof(Atom);
+	    }
+	  else
+	    {
+	      count = number_items * actual_format / 8;
+	    }
+
+          if (md == nil)
+            {
+              md = [[NSMutableData alloc] initWithBytes: (void *)data
+                                          length: count];
+              req_type = actual_type;
+            }
+          else
+            {
+              if (req_type != actual_type)
+                {
+                  char *req_name = XGetAtomName(dnd.display, req_type);
+                  char *act_name = XGetAtomName(dnd.display, actual_type);
+
+                  NSLog(@"Selection changed type from %s to %s.",
+                        req_name, act_name);
+                  XFree(req_name);
+                  XFree(act_name);
+                  RELEASE(md);
+                  return nil;
+                }
+              [md appendBytes: (void *)data length: count];
+            }
+
+          long_offset += count / 4;
+          if (data)
+            {
+              XFree(data);
+            }
+        }
+    }
+  while ((status == Success) && (bytes_remaining > 0));
+
+  if (status == Success)
+    {
+      *type = actual_type;
+      return AUTORELEASE(md);
+    }
+  else
+    {
+      RELEASE(md);
+      return nil;
+    }
 }
 
 - (void)pasteboard:(NSPasteboard *)pb provideDataForType:(NSString *)type
 {
   NSDate                *timeoutDate;
   Atom                  *tlist;
-  gswindow_device_t     *window;
+  Atom actual_type;
+  NSMutableData	*md = nil;
+  id runLoopMode;
+  int ret;
 
   if (destWindow != nil && changeCount == [pb changeCount])
     {
-      window = DRAGWINDEV;
-      dnd.dropper_window = window->ident;
+      dnd.stage = XDND_DROP_STAGE_CONVERTING;
 
       tlist = mimeTypeForPasteboardType (XDPY, [self zone], [NSArray arrayWithObject: type]);
-      xdnd_convert_selection(&dnd,
-			     dnd.dragger_window, // owner
-			     dnd.dropper_window, // requestor
-			     tlist[0]);       // type
+      ret = xdnd_convert_selection(&dnd,
+				   dnd.dragger_window, // owner
+				   dnd.dropper_window, // requestor
+				   tlist[0]);       // type
       NSZoneFree([self zone], tlist);
       tlist = NULL;
 
-      dnd.stage = XDND_DROP_STAGE_CONVERTING;
-      NSLog(@"XDND_DROP_STAGE_CONVERTING");
+      if (ret != 0)
+	{
+	  [pb setData: nil forType: type];
+	  return;
+	}
+
       // now wait for SelectionNotify
 
       timeoutDate = [NSDate dateWithTimeIntervalSinceNow: 5.0];
-
+      runLoopMode = [[NSRunLoop currentRunLoop] currentMode];
       while (dnd.stage != XDND_DROP_STAGE_ENTERED &&
 	     [timeoutDate timeIntervalSinceNow] > 0.0)
 	{
 	  [[NSRunLoop currentRunLoop]
-		       runMode: NSDefaultRunLoopMode
+		       runMode: runLoopMode
 		    beforeDate: timeoutDate];
 	}
 
+
       if (dnd.stage == XDND_DROP_STAGE_ENTERED)
 	{
-	  //[];
-	  NSLog(@"XDND_DROP_STAGE_ENTERED");
+	  md = [self getSelectionDataOfType: &actual_type];
+
+	  if (md != nil)
+	    {
+	      if (actual_type == XG_INCR)
+		{
+		  XEvent event;
+		  NSMutableData	*imd = nil;
+		  BOOL wait = YES;
+
+		  md = nil;
+		  while (wait)
+		    {
+		      XNextEvent(dnd.display, &event);
+
+		      if (event.type == PropertyNotify)
+			{
+			  if (event.xproperty.state != PropertyNewValue) continue;
+
+			  imd = [self getSelectionDataOfType: &actual_type];
+			  if (imd != nil)
+			    {
+			      if (md == nil)
+				{
+				  md = imd;
+				}
+			      else
+				{
+				  [md appendData: imd];
+				}
+			    }
+			  else
+			    {
+			      wait = NO;
+			    }
+			}
+		    }
+		}
+	    }
+
+	  if (md != nil)
+	    {
+	      // Convert data to text string.
+	      if (actual_type == XG_UTF8_STRING)
+		{
+		  NSString	*s;
+		  NSData	*d;
+
+		  s = [[NSString alloc] initWithData: md
+					    encoding: NSUTF8StringEncoding];
+		  if (s != nil)
+		    {
+		      d = [NSSerializer serializePropertyList: s];
+		      RELEASE(s);
+		      [pb setData: d forType: type];
+		    }
+		}
+	      else if ((actual_type == XA_STRING)
+		       || (actual_type == XG_TEXT)
+		       || (actual_type == XG_MIME_PLAIN))
+		{
+		  NSString	*s;
+		  NSData	*d;
+
+		  s = [[NSString alloc] initWithData: md
+					    encoding: NSISOLatin1StringEncoding];
+		  if (s != nil)
+		    {
+		      d = [NSSerializer serializePropertyList: s];
+		      RELEASE(s);
+		      [pb setData: d forType: type];
+		    }
+		}
+	      else if (actual_type == XG_FILE_NAME)
+		{
+		  NSArray *names;
+		  NSData *d;
+		  NSString *s;
+		  NSURL *url;
+
+		  s = [[NSString alloc] initWithData: md
+					    encoding: NSUTF8StringEncoding];
+		  url = [[NSURL alloc] initWithString: s];
+		  RELEASE(s);
+		  if ([url isFileURL])
+		    {
+		      s = [url path];
+		      names = [NSArray arrayWithObject: s];
+		      d = [NSSerializer serializePropertyList: names];
+		      [pb setData: d forType: type];
+		    }
+		  RELEASE(url);
+		}
+	      else if ((actual_type == XG_MIME_RTF)
+		       || (actual_type == XG_MIME_APP_RTF)
+		       || (actual_type == XG_MIME_TEXT_RICHTEXT))
+		{
+		  [pb setData: md forType: type];
+		}
+	      else if (actual_type == XG_MIME_TIFF)
+		{
+		  [pb setData: md forType: type];
+		}
+	      else if (actual_type == XA_ATOM)
+		{
+		  // Used when requesting TARGETS to get available types
+		  [pb setData: md forType: type];
+		}
+	      else
+		{
+		  char *name = XGetAtomName(dnd.display, actual_type);
+
+		  NSDebugLLog(@"NSDragging", @"Unsupported data type '%s' from X selection.", 
+			      name);
+		  XFree(name);
+		}
+	    }
 	}
       else
 	{
-	  NSLog(@"DnD is canceled by timeout");
+	  NSDebugLLog(@"NSDragging", @"DnD is canceled by timeout");
 	  [self resetDragInfo];
 	}
     }
@@ -360,9 +689,9 @@ static	XGDragView	*sharedDragView = nil;
 	{
 	  NSDragOperation action = [theEvent data2];
 	  Atom xaction;
-	  
+
 	  xaction = GSActionForDragOperation(action);
-	  xdnd_send_status(&dnd, 
+	  xdnd_send_status(&dnd,
 			   [theEvent data1],
 			   window->ident,
 			   (action != NSDragOperationNone),
@@ -404,7 +733,7 @@ static	XGDragView	*sharedDragView = nil;
                            GSActionForDragOperation(dragMask & operationMask),
                            XX(newPosition), XY(newPosition), time * 1000);
         break;
-        
+
       case GSAppKitDraggingEnter:
         // FIXME: The first two lines need only be called once for every drag operation.
         // They should be moved to a different method.
@@ -420,7 +749,7 @@ static	XGDragView	*sharedDragView = nil;
       case GSAppKitDraggingExit:
         xdnd_send_leave(&dnd, dWindowNumber, dragWindev->ident);
         break;
-  
+
       default:
         break;
     }
@@ -444,7 +773,7 @@ static	XGDragView	*sharedDragView = nil;
       return nil;
     }
 }
-            
+
 
 
 /*
@@ -468,15 +797,15 @@ static	XGDragView	*sharedDragView = nil;
 
   if (parent == ident)
     return -1;
-  
+
   XQueryTree(display, parent, &root, &ignore, &children, &nchildren);
 
   while (nchildren-- > 0)
     {
       Window child = children [nchildren];
-  
+
       if (XGetWindowAttributes (display, child, &attr)
-	&& attr.map_state == IsViewable 
+	&& attr.map_state == IsViewable
 	&& XTranslateCoordinates (display, root, child, x, y, &ret_x, &ret_y,
 	  &child2)
 	&& ret_x >= 0 && ret_x < attr.width
@@ -498,7 +827,7 @@ static	XGDragView	*sharedDragView = nil;
   if (children)
     {
       XFree (children);
-    } 
+    }
   if (result == (Window) None)
     {
       if (xdnd_is_dnd_aware (&dnd, parent, &dnd.dragging_version, typelist))
@@ -506,7 +835,7 @@ static	XGDragView	*sharedDragView = nil;
           result = parent;
         }
     }
-  
+
   return result;
 }
 

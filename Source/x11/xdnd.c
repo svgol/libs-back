@@ -292,7 +292,7 @@ xdnd_send_finished(DndClass * dnd, Window window, Window from, int error)
   memset (&xevent, 0, sizeof (xevent));
   xevent.xany.type = ClientMessage;
   xevent.xany.display = dnd->display;
-  xevent.xclient.window = window;				
+  xevent.xclient.window = window;
   xevent.xclient.message_type = dnd->XdndFinished;
   xevent.xclient.format = 32;
 
@@ -304,14 +304,24 @@ xdnd_send_finished(DndClass * dnd, Window window, Window from, int error)
 int
 xdnd_convert_selection(DndClass *dnd, Window window, Window requester, Atom type)
 {
-  if (window != XGetSelectionOwner (dnd->display, dnd->XdndSelection)) 
+  if (window != XGetSelectionOwner (dnd->display, dnd->XdndSelection))
     {
       dnd_debug ("xdnd_convert_selection(): XGetSelectionOwner failed");
       return 1;
     }
 
-  XConvertSelection (dnd->display, dnd->XdndSelection, type,
-    dnd->Xdnd_NON_PROTOCOL_ATOM, requester, CurrentTime);
+  int ret = XConvertSelection (dnd->display, dnd->XdndSelection, type,
+			       dnd->Xdnd_NON_PROTOCOL_ATOM, requester, dnd->time);
+  if (ret == BadWindow)
+    {
+      dnd_debug("xdnd_convert_selection(): XConvertSelection failed: BadWindow");
+      return 2;
+    }
+  if (ret == BadAtom)
+    {
+      dnd_debug("xdnd_convert_selection(): XConvertSelection failed: BadAtom");
+      return 3;
+    }
   return 0;
 }
 

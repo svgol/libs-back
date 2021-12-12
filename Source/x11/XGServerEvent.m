@@ -810,6 +810,7 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
               eventLocation = [self _XPointToOSPoint: eventLocation
                                                  for: cWin];
               time = XDND_POSITION_TIME(&xEvent);
+	      NSLog(@"XdndPosition %lld", time);
               action = XDND_POSITION_ACTION(&xEvent);
               operation = GSDragOperationForAction(action);
               e = [NSEvent otherEventWithType: NSAppKitDefined
@@ -1865,10 +1866,7 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
 		  {
 		    break;
 		  }
-		NSLog(@"NSDragging: %lu SelectionNotify\n",
-			    dnd.dragger_window);
-		// trigger dropping
-		dnd.stage = XDND_DROP_STAGE_ENTERED;
+		[dragInfo enterDropStage: &xEvent];
 	      }
 	  }
         break;
