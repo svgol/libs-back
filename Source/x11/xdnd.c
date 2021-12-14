@@ -49,6 +49,50 @@
 
 #endif
 
+/*
+ *	Non-predefined atoms that are used in the X selection mechanism
+ */
+static char *atom_names[] = {
+  "CHARACTER_POSITION",
+  "CLIENT_WINDOW",
+  "HOST_NAME",
+  "HOSTNAME",
+  "LENGTH",
+  "LIST_LENGTH",
+  "NAME",
+  "OWNER_OS",
+  "SPAN",
+  "TARGETS",
+  "TIMESTAMP",
+  "USER",
+  "TEXT",
+  "NULL",
+  "FILE_NAME",
+  "CLIPBOARD",
+  "UTF8_STRING",
+  "MULTIPLE",
+  "COMPOUND_TEXT",
+  "INCR",
+
+  // some MIME types
+  "text/plain",
+  "text/uri-list",
+  "application/postscript",
+  "text/tab-separated-values",
+  "text/richtext",
+  "image/tiff",
+  "application/octet-stream",
+  "application/x-rootwindow-drop",
+  "application/richtext",
+  "text/rtf",
+  "text/html",
+  "application/xhtml+xml",
+  "image/png",
+  "image/svg",
+  "application/rtf",
+  "text/richtext"
+};
+static Atom atoms[sizeof(atom_names)/sizeof(char*)];
 
 
 void
@@ -67,6 +111,7 @@ xdnd_reset(DndClass * dnd)
   dnd->dragger_typelist = 0;
   dnd->desired_type = 0;
   dnd->time = 0;
+  dnd->property = 0;
 }
 
 void
@@ -94,7 +139,24 @@ xdnd_init(DndClass * dnd, Display * display)
   dnd->XdndActionList = XInternAtom (dnd->display, "XdndActionList", False);
   dnd->XdndActionDescription = XInternAtom(dnd->display,
     "XdndActionDescription", False);
+  dnd->atoms = atoms;
   xdnd_reset(dnd);
+
+  /*
+   * Set up atoms for use in X selection mechanism.
+   */
+#ifdef HAVE_XINTERNATOMS
+   XInternAtoms(dnd->display, atom_names, sizeof(atom_names)/sizeof(char*),
+		False, dnd->atoms);
+#else
+   {
+     int atomCount;
+
+     for (atomCount = 0; atomCount < sizeof(atom_names)/sizeof(char*); atomCount++)
+       dnd->atoms[atomCount] = XInternAtom(dnd->display, atom_names[atomCount], False);
+   }
+#endif
+
 }
 
 static int

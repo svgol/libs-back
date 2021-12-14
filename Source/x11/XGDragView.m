@@ -56,91 +56,6 @@
 #define	XX(P)	(P.x)
 #define	XY(P)	([(XGServer *)GSCurrentServer() xScreenSize].height - P.y)
 
-/*
- *	Non-predefined atoms that are used in the X selection mechanism
- */
-static char *atom_names_xg[] = {
-  "CHARACTER_POSITION",
-  "CLIENT_WINDOW",
-  "HOST_NAME",
-  "HOSTNAME",
-  "LENGTH",
-  "LIST_LENGTH",
-  "NAME",
-  "OWNER_OS",
-  "SPAN",
-  "TARGETS",
-  "TIMESTAMP",
-  "USER",
-  "TEXT",
-  "NULL",
-  "FILE_NAME",
-  "CLIPBOARD",
-  "UTF8_STRING",
-  "MULTIPLE",
-  "COMPOUND_TEXT",
-  "INCR",
-
-  // some MIME types
-  "text/plain",
-  "text/uri-list",
-  "application/postscript",
-  "text/tab-separated-values",
-  "text/richtext",
-  "image/tiff",
-  "application/octet-stream",
-  "application/x-rootwindow-drop",
-  "application/richtext",
-  "text/rtf",
-  "text/html",
-  "application/xhtml+xml",
-  "image/png",
-  "image/svg",
-  "application/rtf",
-  "text/richtext"
-};
-static Atom atoms[sizeof(atom_names_xg)/sizeof(char*)];
-
-
-/*
- * Macros to access elements in atom_names array.
- */
-#define XG_CHAR_POSITION        atoms[0]
-#define XG_CLIENT_WINDOW        atoms[1]
-#define XG_HOST_NAME            atoms[2]
-#define XG_HOSTNAME             atoms[3]
-#define XG_LENGTH               atoms[4]
-#define XG_LIST_LENGTH          atoms[5]
-#define XG_NAME                 atoms[6]
-#define XG_OWNER_OS             atoms[7]
-#define XG_SPAN                 atoms[8]
-#define XG_TARGETS              atoms[9]
-#define XG_TIMESTAMP            atoms[10]
-#define XG_USER                 atoms[11]
-#define XG_TEXT                 atoms[12]
-#define XG_NULL                 atoms[13]
-#define XG_FILE_NAME		atoms[14]
-#define XA_CLIPBOARD		atoms[15]
-#define XG_UTF8_STRING		atoms[16]
-#define XG_MULTIPLE		atoms[17]
-#define XG_COMPOUND_TEXT	atoms[18]
-#define XG_INCR         	atoms[19]
-#define XG_MIME_PLAIN    	atoms[20]
-#define XG_MIME_URI      	atoms[21]
-#define XG_MIME_PS      	atoms[22]
-#define XG_MIME_TSV      	atoms[23]
-#define XG_MIME_RICHTEXT  atoms[24]
-#define XG_MIME_TIFF      atoms[25]
-#define XG_MIME_OCTET     atoms[26]
-#define XG_MIME_ROOTWINDOW atoms[27]
-#define XG_MIME_APP_RICHTEXT atoms[28]
-#define XG_MIME_RTF       atoms[29]
-#define XG_MIME_HTML      atoms[30]
-#define XG_MIME_XHTML     atoms[31]
-#define XG_MIME_PNG       atoms[32]
-#define XG_MIME_SVG       atoms[33]
-#define XG_MIME_APP_RTF   atoms[34]
-#define XG_MIME_TEXT_RICHTEXT atoms[35]
 
 
 @interface XGRawWindow : NSWindow
@@ -161,6 +76,46 @@ static Atom atoms[sizeof(atom_names_xg)/sizeof(char*)];
 static DndClass dnd;
 static BOOL     xDndInitialized = NO;
 
+/*
+ * Macros to access elements in atom_names array.
+ */
+#define XG_CHAR_POSITION        dnd.atoms[0]
+#define XG_CLIENT_WINDOW        dnd.atoms[1]
+#define XG_HOST_NAME            dnd.atoms[2]
+#define XG_HOSTNAME             dnd.atoms[3]
+#define XG_LENGTH               dnd.atoms[4]
+#define XG_LIST_LENGTH          dnd.atoms[5]
+#define XG_NAME                 dnd.atoms[6]
+#define XG_OWNER_OS             dnd.atoms[7]
+#define XG_SPAN                 dnd.atoms[8]
+#define XG_TARGETS              dnd.atoms[9]
+#define XG_TIMESTAMP            dnd.atoms[10]
+#define XG_USER                 dnd.atoms[11]
+#define XG_TEXT                 dnd.atoms[12]
+#define XG_NULL                 dnd.atoms[13]
+#define XG_FILE_NAME		dnd.atoms[14]
+#define XA_CLIPBOARD		dnd.atoms[15]
+#define XG_UTF8_STRING		dnd.atoms[16]
+#define XG_MULTIPLE		dnd.atoms[17]
+#define XG_COMPOUND_TEXT	dnd.atoms[18]
+#define XG_INCR         	dnd.atoms[19]
+#define XG_MIME_PLAIN    	dnd.atoms[20]
+#define XG_MIME_URI      	dnd.atoms[21]
+#define XG_MIME_PS      	dnd.atoms[22]
+#define XG_MIME_TSV      	dnd.atoms[23]
+#define XG_MIME_RICHTEXT  dnd.atoms[24]
+#define XG_MIME_TIFF      dnd.atoms[25]
+#define XG_MIME_OCTET     dnd.atoms[26]
+#define XG_MIME_ROOTWINDOW dnd.atoms[27]
+#define XG_MIME_APP_RICHTEXT dnd.atoms[28]
+#define XG_MIME_RTF       dnd.atoms[29]
+#define XG_MIME_HTML      dnd.atoms[30]
+#define XG_MIME_XHTML     dnd.atoms[31]
+#define XG_MIME_PNG       dnd.atoms[32]
+#define XG_MIME_SVG       dnd.atoms[33]
+#define XG_MIME_APP_RTF   dnd.atoms[34]
+#define XG_MIME_TEXT_RICHTEXT dnd.atoms[35]
+
 void
 GSEnsureDndIsInitialized (void)
 {
@@ -168,21 +123,6 @@ GSEnsureDndIsInitialized (void)
     {
       xDndInitialized = YES;
       xdnd_init (&dnd, XDPY);
-        /*
-	 * Set up atoms for use in X selection mechanism.
-	 */
-#ifdef HAVE_XINTERNATOMS
-   XInternAtoms(dnd.display, atom_names_xg, sizeof(atom_names_xg)/sizeof(char*),
-                False, atoms);
-#else
-   {
-     int atomCount;
-
-     for (atomCount = 0; atomCount < sizeof(atom_names_xg)/sizeof(char*); atomCount++)
-       atoms[atomCount] = XInternAtom(dnd.display, atom_names_xg[atomCount], False);
-   }
-#endif
-
     }
 }
 

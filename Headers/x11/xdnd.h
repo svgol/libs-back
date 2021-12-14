@@ -115,7 +115,9 @@ struct _DndClass {
 /* block for only this many seconds on not receiving a XdndFinished from target, default : 10 */
     int time_out;
   /* the property to acquire the data from the owner */
-  Atom property;
+    Atom property;
+  /* Non-predefined atoms that are used in the X selection mechanism */
+    Atom *atoms;
 };
 
 void xdnd_init (DndClass * dnd, Display * display);
