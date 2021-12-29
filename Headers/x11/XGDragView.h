@@ -33,6 +33,7 @@
 #include <Foundation/NSGeometry.h>
 #include "x11/xdnd.h"
 #include "x11/XGServerWindow.h"
+#include "x11/XDNDSession.h"
 
 /*"
   Drag and drop support functions
@@ -55,16 +56,15 @@ NSDragOperation	GSDragOperationForAction(Atom xaction);
 {
   Atom           *typelist;
   int          changeCount;
+  XDNDSession *xdndSession;
 }
 
 + (id) sharedDragView;
 - (id) init;
+- (XDNDSession *)xdndSession;
 - (void) setupDragInfoFromXEvent: (XEvent *)xEvent;
 - (void) updateDragInfoFromEvent: (NSEvent *)event;
 - (void) resetDragInfo;
-/* switch the state into XDND_DROP_STAGE_ENTERED */
-- (void)enterDropStage:(XEvent *)xEvent;
-- (NSMutableData*) getSelectionDataOfType: (Atom*)type;
 - (void)pasteboard:(NSPasteboard *)pb provideDataForType:(NSString *)type;
 - (void) dragImage: (NSImage*)anImage
 		at: (NSPoint)screenLocation

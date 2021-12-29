@@ -50,6 +50,7 @@
 #include "x11/XGDragView.h"
 #include "x11/XGGeneric.h"
 #include "x11/xdnd.h"
+#include "x11/XDNDSession.h"
 
 #ifdef HAVE_WRASTER_H
 #include "wraster.h"
@@ -777,8 +778,9 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
               /* If this is a non-local drag, set the dragInfo */
               if ([XGServer _windowForXWindow: source] == NULL)
                 {
+		  [[[XGDragView sharedDragView] xdndSession] receive: &xEvent];
                   [[XGDragView sharedDragView] setupDragInfoFromXEvent:
-                                                 &xEvent];
+						 &xEvent];
                 }
             }
           else if (xEvent.xclient.message_type == dnd.XdndPosition)
@@ -810,7 +812,6 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
               eventLocation = [self _XPointToOSPoint: eventLocation
                                                  for: cWin];
               time = XDND_POSITION_TIME(&xEvent);
-	      NSLog(@"XdndPosition %lld", time);
               action = XDND_POSITION_ACTION(&xEvent);
               operation = GSDragOperationForAction(action);
               e = [NSEvent otherEventWithType: NSAppKitDefined
@@ -825,8 +826,9 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
               /* If this is a non-local drag, update the dragInfo */
               if ([XGServer _windowForXWindow: source] == NULL)
                 {
-                  [[XGDragView sharedDragView] updateDragInfoFromEvent:
-                                                 e];
+		  XGDragView *dragInfo = [XGDragView sharedDragView];
+		  [[dragInfo xdndSession] receive: &xEvent];
+                  [dragInfo updateDragInfoFromEvent: e];
                 }
             }
           else if (xEvent.xclient.message_type == dnd.XdndStatus)
@@ -857,6 +859,12 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
                            subtype: GSAppKitDraggingStatus
                            data1: target
                            data2: operation];
+	      /* If this is a non-local drag, update the XDND session */
+              if ([XGServer _windowForXWindow: target] == NULL)
+                {
+                  [[[XGDragView sharedDragView] xdndSession] receive: &xEvent];
+                }
+
             }
           else if (xEvent.xclient.message_type == dnd.XdndLeave)
             {
@@ -897,6 +905,11 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
                            subtype: GSAppKitDraggingDrop
                            data1: source
                            data2: 0];
+	      /* If this is a non-local drag */
+              if ([XGServer _windowForXWindow: source] == NULL)
+                {
+                  [[[XGDragView sharedDragView] xdndSession] receive: &xEvent];
+                }
             }
           else if (xEvent.xclient.message_type == dnd.XdndFinished)
             {
@@ -1859,15 +1872,7 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
 	NSWindow *destWindow = [dragInfo draggingDestinationWindow];
 	if (destWindow != nil)
 	  {
-	    DndClass dnd = xdnd();
-	    if (xEvent.xselection.requestor == dnd.dropper_window)
-	      {
-		if (xEvent.xselection.property == None)
-		  {
-		    break;
-		  }
-		[dragInfo enterDropStage: &xEvent];
-	      }
+	    [[dragInfo xdndSession] receive: &xEvent];
 	  }
         break;
 
@@ -1875,37 +1880,8 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
         NSDebugLLog(@"NSEvent", @"%lu SelectionRequest\n",
                     xEvent.xselectionrequest.requestor);
         {
-          NSPasteboard *pb = [NSPasteboard pasteboardWithName: NSDragPboard];
-          NSArray *types = [pb types];
-          NSData *data = nil;
-          Atom xType = xEvent.xselectionrequest.target;
-
-          if (((xType == generic.UTF8_STRING_ATOM) || 
-               (xType == XA_STRING) || 
-               (xType == generic.TEXT_ATOM)) &&
-              [types containsObject: NSStringPboardType])
-            {
-              NSString *s = [pb stringForType: NSStringPboardType];
-
-              if (xType == generic.UTF8_STRING_ATOM)
-                {
-                  data = [s dataUsingEncoding: NSUTF8StringEncoding];
-                }
-              else if ((xType == XA_STRING) || (xType == generic.TEXT_ATOM))
-                {
-                  data = [s dataUsingEncoding: NSISOLatin1StringEncoding];
-                }
-            }
-          // FIXME: Add support for more types. See: xpbs.m
-
-          if (data != nil)
-            {
-              DndClass dnd = xdnd();
-
-              // Send the data to the other process
-              xdnd_selection_send(&dnd, &xEvent.xselectionrequest, 
-                                  (unsigned char *)[data bytes], [data length]);        
-            }
+	  XGDragView *dragInfo = [XGDragView sharedDragView];
+	  [[dragInfo xdndSession] receive: &xEvent];
         }
         break;
 
