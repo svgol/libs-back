@@ -610,7 +610,11 @@ static int              xFixesEventBase;
 
 - (void) pasteboardChangedOwner: (NSPasteboard*)sender
 {
-  //Window	w;
+  Window	 w;
+  XClassHint owner;
+  Status st;
+  BOOL allowed = NO;
+
   /*
    *	If this gets called, a GNUstep object has grabbed the pasteboard
    *	or has changed the types of data available from the pasteboard
@@ -626,23 +630,53 @@ static int              xFixesEventBase;
   // the pasteboard.)
 
   /*
-   * it is probably a bug to acquire selection ownership bc between
+   * it is probably a bug to acquire any selection ownership bc between
    * GNUstep applications is there the gpbs in charge while between an X-App and
-   * a GNUstep app is there the ICCCM machinery (XDND) overcoming the gpbs
-
-  _timeOfSetSelectionOwner = [self xTimeByAppending];
-  XSetSelectionOwner(xDisplay, _xPb, xAppWin, _timeOfSetSelectionOwner);
+   * a GNUstep app is there the ICCCM machinery (XDND) overcoming the gpbs */
 
   w = XGetSelectionOwner(xDisplay, _xPb);
-  if (w != xAppWin)
+  if (w != None)
     {
-      NSLog(@"Failed to set X selection owner to the pasteboard server.");
+      st = XGetClassHint(xDisplay, w, &owner);
+      if (st != BadWindow)
+	{
+	  const char *gs = "GNUstep";
+	  if (strcmp(gs, owner.res_class) == 0)
+	    {
+	      // gpbs should be in charge only for GNUstep windows
+	      allowed = YES;
+	    }
+	  else
+	    {
+	      return;
+	    }
+	}
+      else
+	{
+	  NSLog(@"FIXME: ERROR");
+	  return;
+	}
     }
   else
     {
-      [self setOwnedByOpenStep: YES];
+      allowed = YES;
     }
-  */
+
+  if (allowed)
+    {
+      _timeOfSetSelectionOwner = [self xTimeByAppending];
+      XSetSelectionOwner(xDisplay, _xPb, xAppWin, _timeOfSetSelectionOwner);
+
+      w = XGetSelectionOwner(xDisplay, _xPb);
+      if (w != xAppWin)
+	{
+	  NSLog(@"Failed to set X selection owner to the pasteboard server.");
+	}
+      else
+	{
+	  [self setOwnedByOpenStep: YES];
+	}
+    }
 }
 
 - (void) requestData: (Atom)xType 
