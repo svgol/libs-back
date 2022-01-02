@@ -1,4 +1,4 @@
-/* 
+/*
    xdnd.c, xdnd.h - C program library for handling the Xdnd protocol
 
    Copyright (C) 1998  Paul Sheer
@@ -34,7 +34,7 @@
 #include "x11/xdnd.h"
 
 
-// #define DND_DEBUG 
+// #define DND_DEBUG
 #define dnd_version_at_least(a,b) ((a) <= (b))
 
 #ifdef DND_DEBUG
@@ -172,13 +172,13 @@ array_length(Atom * a)
 void
 xdnd_set_dnd_aware (DndClass * dnd, Window window, Atom * typelist)
 {
-  XChangeProperty (dnd->display, window, dnd->XdndAware, XA_ATOM, 32, 
+  XChangeProperty (dnd->display, window, dnd->XdndAware, XA_ATOM, 32,
     PropModeReplace, (unsigned char *) &dnd->version, 1);
-  if (typelist) 
+  if (typelist)
     {
       int n = array_length (typelist);
       if (n)
-	XChangeProperty (dnd->display, window, dnd->XdndAware, XA_ATOM, 32, 
+	XChangeProperty (dnd->display, window, dnd->XdndAware, XA_ATOM, 32,
 	  PropModeAppend, (unsigned char *) typelist, n);
     }
 }
@@ -198,7 +198,7 @@ xdnd_is_dnd_aware(DndClass *dnd, Window window, int *version, Atom *typelist)
     0, 0x8000000L, False, XA_ATOM, &actual, &format,
     &count, &remaining, &data);
 
-  if (actual != XA_ATOM || format != 32 || count == 0 || !data) 
+  if (actual != XA_ATOM || format != 32 || count == 0 || !data)
     {
       dnd_debug("XGetWindowProperty failed in xdnd_is_dnd_aware - XdndAware = %ld", dnd->XdndAware);
       if (data)
@@ -209,15 +209,15 @@ xdnd_is_dnd_aware(DndClass *dnd, Window window, int *version, Atom *typelist)
   types = (Atom *) data;
   *version = dnd->version < types[0] ? dnd->version : types[0];	// minimum
   dnd_debug ("Using XDND version %d", *version);
-  if (count > 1) 
+  if (count > 1)
     {
       result = 0;
-      for (t = typelist; *t; t++) 
+      for (t = typelist; *t; t++)
 	{
 	  unsigned long j;
-	  for (j = 1; j < count; j++) 
+	  for (j = 1; j < count; j++)
 	    {
-	      if (types[j] == *t) 
+	      if (types[j] == *t)
 		{
 		  result = 1;
 		  break;
@@ -259,7 +259,7 @@ xdnd_send_enter(DndClass *dnd, Window window, Window from, Atom *typelist)
 }
 
 void
-xdnd_send_position(DndClass *dnd, Window window, Window from, Atom action, 
+xdnd_send_position(DndClass *dnd, Window window, Window from, Atom action,
    int x, int y, unsigned long time)
 {
   XEvent xevent;
@@ -283,7 +283,7 @@ xdnd_send_position(DndClass *dnd, Window window, Window from, Atom action,
 }
 
 void
-xdnd_send_status(DndClass *dnd, Window window, Window from, int will_accept, 
+xdnd_send_status(DndClass *dnd, Window window, Window from, int will_accept,
   int want_position, int x, int y, int w, int h, Atom action)
 {
   XEvent xevent;
@@ -390,17 +390,17 @@ xdnd_convert_selection(DndClass *dnd, Window window, Window requester, Atom type
 int
 xdnd_set_selection_owner(DndClass * dnd, Window window, Atom type)
 {
-  if (!XSetSelectionOwner(dnd->display,dnd->XdndSelection,window,CurrentTime)) 	
+  if (!XSetSelectionOwner(dnd->display,dnd->XdndSelection,window,CurrentTime))
     {
       dnd_debug ("xdnd_set_selection_owner(): XSetSelectionOwner failed");
-      return 1;	
-    }	
+      return 1;
+    }
 
   return 0;
 }
 
 void
-xdnd_selection_send(DndClass * dnd, XSelectionRequestEvent * request, 
+xdnd_selection_send(DndClass * dnd, XSelectionRequestEvent * request,
   unsigned char *data, int length)
 {
   XEvent xevent;
