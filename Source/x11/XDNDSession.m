@@ -33,7 +33,6 @@
 
 #include <AppKit/NSPasteboard.h>
 
-
 #define XDND_SESSION_NONE  -1 // no active DnD session
 #define XDND_SESSION_LOCAL  0 // a local DnD session inside a GNUstep app
 #define XDND_SESSION_GS_GS  1 // a DnD session between two GNUstep apps
@@ -96,7 +95,7 @@ mimeTypeForPasteboardType(Display *xDisplay, NSZone *zone, NSArray *types)
 
       mime = [types objectAtIndex: i];
       mime = [NSPasteboard mimeTypeForPasteboardType: mime];
-      typelist[i] = XInternAtom(xDisplay, [mime cString], False);
+      typelist[i] = XInternAtom(xDisplay, [mime cString], False); // False - to create the atom
     }
   typelist[count] = 0;
 
