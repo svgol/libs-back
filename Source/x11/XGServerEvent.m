@@ -927,6 +927,11 @@ posixFileDescriptor: (NSPosixFileDescriptor*)fileDescriptor
                            subtype: GSAppKitDraggingFinished
                            data1: target
                            data2: 0];
+	      /* If this is a non-local drag */
+              if ([XGServer _windowForXWindow: target] == NULL)
+                {
+                  [[[XGDragView sharedDragView] xdndSession] receive: &xEvent];
+                }
             }
         }
         break;
