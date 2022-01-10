@@ -302,7 +302,7 @@ xdnd_send_status(DndClass *dnd, Window window, Window from, int will_accept,
     XDND_STATUS_WANT_POSITION_SET (&xevent, want_position);
   if (want_position)
     XDND_STATUS_RECT_SET (&xevent, x, y, w, h);
-  if (dnd_version_at_least (dnd->dragging_version, 2))
+  if (dnd_version_at_least (dnd->dragging_version, XDND_VERSION))
     if (will_accept)
       XDND_STATUS_ACTION (&xevent) = action;
 
