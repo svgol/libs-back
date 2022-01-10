@@ -163,13 +163,19 @@ static	XDNDSession	*sharedSession = nil;
       {
 	if (xEvent->xclient.message_type == _dnd.XdndEnter)
 	  {
+
 	    _dnd.dragger_window = XGetSelectionOwner(_dnd.display, _dnd.XdndSelection);
+	    if (_dnd.dragger_window == None)
+	      {
+		NSDebugLLog(@"NSDragging", @"FIXME: ERROR: XGetSelectionOwner returns no window");
+		return NO;
+	      }
 	    _dnd.dropper_window = ((XAnyEvent *)xEvent)->window;
 	    if (_dnd.dragger_window == _dnd.dropper_window)
 	      {
 		// local DnD
 		sessionType = XDND_SESSION_LOCAL;
-		NSDebugLLog(@"NSDragging", @"XDND: LOCAL");
+		NSDebugLLog(@"NSDragging", @"XdndEnter: LOCAL");
 	      }
 	    else
 	      {
@@ -193,21 +199,22 @@ static	XDNDSession	*sharedSession = nil;
 		  {
 		    // GS to GS, ignore such drag
 		    sessionType = XDND_SESSION_GS_GS;
-		    NSDebugLLog(@"NSDragging", @"XDND: GS to GS");
+		    NSDebugLLog(@"NSDragging", @"XdndEnter: GS to GS");
 		  }
 		else
 		  {
 		    // GS to X or X to GS
 		    const char *gs = "GNUstep";
+		    _dnd.stage = XDND_DRAG_STAGE_ENTERED;
 		    if (strcmp(gs, dropper.res_class) == 0)
 		      {
 			sessionType = XDND_SESSION_X_GS;
-			NSDebugLLog(@"NSDragging", @"XDND: X to GS");
+			NSDebugLLog(@"NSDragging", @"XdndEnter: X to GS");
 		      }
 		    else
 		      {
 			sessionType = XDND_SESSION_GS_X;
-			NSDebugLLog(@"NSDragging", @"XDND: GS to X");
+			NSDebugLLog(@"NSDragging", @"XdndEnter: GS to X");
 		      }
 		  }
 		return YES;
@@ -219,14 +226,9 @@ static	XDNDSession	*sharedSession = nil;
 	      {
 		if (xEvent->xclient.message_type == _dnd.XdndPosition)
 		  {
-		    static int to_rm_count = 0;
-
 		    _dnd.time = XDND_POSITION_TIME(xEvent);
-		    to_rm_count++;
-		    if (to_rm_count % 30 == 0)
-		      {
-			NSDebugLLog(@"NSDragging", @"XDND: Position");
-		      }
+		    NSDebugLLog(@"NSDragging", @"XdndPosition: time: %lu | will_accept: %d | ready_to_drop: %d | stage: %d",
+				_dnd.time, _dnd.will_accept, _dnd.ready_to_drop, _dnd.stage);
 		    return YES;
 		  }
 	      }
@@ -240,8 +242,8 @@ static	XDNDSession	*sharedSession = nil;
 	  {
 	    if (sessionType == XDND_SESSION_X_GS)
 	      {
-		NSDebugLLog(@"NSDragging", @"XDND: XdndDrop received");
-		[NSTimer scheduledTimerWithTimeInterval:0.0
+		NSDebugLLog(@"NSDragging", @"XdndDrop: scheduled timer");
+		[NSTimer scheduledTimerWithTimeInterval:0.3
 						 target:self
 					       selector:@selector(timer:)
 					       userInfo:nil
@@ -259,13 +261,34 @@ static	XDNDSession	*sharedSession = nil;
 	    if (sessionType == XDND_SESSION_GS_X)
 	      {
 		// X-target infroms us
-		NSDebugLLog(@"NSDragging", @"X-target informs us");
+		NSDebugLLog(@"NSDragging", @"XdndStatus: X-target informs us");
 		return YES;
 	      }
 	    else
 	      {
 		// GS to GS 
-		NSDebugLLog(@"NSDragging", @"Ignore");
+		NSDebugLLog(@"NSDragging", @"XdndStatus: Ignore");
+	      }
+	  }
+	else if (xEvent->xclient.message_type == _dnd.XdndLeave)
+	  {
+	    if (sessionType == XDND_SESSION_X_GS)
+	      {
+		[self reset];
+	      }
+	  }
+	else if (xEvent->xclient.message_type == _dnd.XdndFinished)
+	  {
+	    if (sessionType == XDND_SESSION_GS_X)
+	      {
+		// X-target infroms us
+		NSDebugLLog(@"NSDragging", @"XdndFinished: X-target informs us");
+		return YES;
+	      }
+	    else
+	      {
+		// GS to GS
+		NSDebugLLog(@"NSDragging", @"XdndFinished: Ignore");
 	      }
 	  }
       }
@@ -321,7 +344,7 @@ static	XDNDSession	*sharedSession = nil;
     }
   else
     {
-      NSDebugLLog(@"NSDragging", @"FIXME: ERROR");
+      NSDebugLLog(@"NSDragging", @"XDND: unknown X message");
     }
 
   [self reset];
@@ -631,7 +654,7 @@ static	XDNDSession	*sharedSession = nil;
     }
   else
     {
-      // types via GNUstep
+      // types via NSPasteboard-related
     }
 
   return nil;
