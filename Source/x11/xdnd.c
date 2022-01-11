@@ -274,9 +274,9 @@ xdnd_send_position(DndClass *dnd, Window window, Window from, Atom action,
 
   XDND_POSITION_SOURCE_WIN (&xevent) = from;
   XDND_POSITION_ROOT_SET (&xevent, x, y);
-  if (dnd_version_at_least (dnd->dragging_version, 1))
+  if (dnd_version_at_least (1, dnd->dragging_version))
     XDND_POSITION_TIME (&xevent) = time;
-  if (dnd_version_at_least (dnd->dragging_version, 2))
+  if (dnd_version_at_least (2, dnd->dragging_version))
     XDND_POSITION_ACTION (&xevent) = action;
 
   XSendEvent (dnd->display, window, 0, 0, &xevent);
