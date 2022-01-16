@@ -610,73 +610,7 @@ static int              xFixesEventBase;
 
 - (void) pasteboardChangedOwner: (NSPasteboard*)sender
 {
-  Window	 w;
-  XClassHint owner;
-  Status st;
-  BOOL allowed = NO;
 
-  /*
-   *	If this gets called, a GNUstep object has grabbed the pasteboard
-   *	or has changed the types of data available from the pasteboard
-   *	so we must tell the X server that we have the current selection.
-   *	To conform to ICCCM we need to specify an up-to-date timestamp.
-   */
-
-  // FIXME: See note in -xSelectionClear:. This method is called by
-  // -[NSPasteboard declareTypes:owner:], but we might not want
-  // GNUstep to take ownership. (e.g. suppose selection ownership changes from
-  // gnome-terminal to OpenOffice.org. But, we will still need to update the
-  // types available on the pasteboard in case a GNUstep app wants to read from
-  // the pasteboard.)
-
-  /*
-   * it is probably a bug to acquire any selection ownership bc between
-   * GNUstep applications is there the gpbs in charge while between an X-App and
-   * a GNUstep app is there the ICCCM machinery (XDND) overcoming the gpbs */
-
-  w = XGetSelectionOwner(xDisplay, _xPb);
-  if (w != None)
-    {
-      st = XGetClassHint(xDisplay, w, &owner);
-      if (st != BadWindow)
-	{
-	  const char *gs = "GNUstep";
-	  if (strcmp(gs, owner.res_class) == 0)
-	    {
-	      // gpbs should be in charge only for GNUstep windows
-	      allowed = YES;
-	    }
-	  else
-	    {
-	      return;
-	    }
-	}
-      else
-	{
-	  NSLog(@"FIXME: ERROR");
-	  return;
-	}
-    }
-  else
-    {
-      allowed = YES;
-    }
-
-  if (allowed)
-    {
-      _timeOfSetSelectionOwner = [self xTimeByAppending];
-      XSetSelectionOwner(xDisplay, _xPb, xAppWin, _timeOfSetSelectionOwner);
-
-      w = XGetSelectionOwner(xDisplay, _xPb);
-      if (w != xAppWin)
-	{
-	  NSLog(@"Failed to set X selection owner to the pasteboard server.");
-	}
-      else
-	{
-	  [self setOwnedByOpenStep: YES];
-	}
-    }
 }
 
 - (void) requestData: (Atom)xType 
@@ -1685,7 +1619,7 @@ static DndClass dnd;
   // We also have to set the supported types for our window
   types = [_pb types];
   typelist = mimeTypeForPasteboardType(xDisplay, [self zone], types);
-  xdnd_set_type_list(&dnd, xAppWin, typelist);
+  //xdnd_set_type_list(&dnd, xAppWin, typelist);
   NSZoneFree([self zone], typelist);
 }
 
@@ -1693,14 +1627,14 @@ static DndClass dnd;
 {
   Window window;
   Atom *types;
-  NSArray *newTypes;
+  NSArray *newTypes = nil;
 	
   window = XGetSelectionOwner(xDisplay, dnd.XdndSelection);
   if (window == None)
     return nil;
-  xdnd_get_type_list(&dnd, window, &types);
-  newTypes = pasteboardTypeForMimeType(xDisplay, [self zone], types);
-  free(types);
+  //xdnd_get_type_list(&dnd, window, &types);
+  //newTypes = pasteboardTypeForMimeType(xDisplay, [self zone], types);
+  //free(types);
   return newTypes;
 }
 
